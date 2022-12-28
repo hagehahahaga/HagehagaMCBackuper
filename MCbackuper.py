@@ -30,19 +30,19 @@ def config_setup(Create):
     if Create==True:
         print("创建配置文件")
         config['Config'] = {}
-        config['Config']['OriginalPath'] = input("输入原始存档路径")
-        config['Config']['BackupPath'] = input("输入备份存档路径")
-        config['Config']['SleepTime'] = input("输入检测频率(s)")
+        config['Config']['OriginalPath'] = input("输入原始存档路径\n")
+        config['Config']['BackupPath'] = input("输入备份存档路径\n")
+        config['Config']['SleepTime'] = input("输入检测频率(s)\n")
         config.write()
     else:
         while True:
-            inpu=input("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 返回")
+            inpu=input("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 返回\n")
             if inpu=='0':
-                config['Config']['OriginalPath'] = input("输入原始存档路径")
+                config['Config']['OriginalPath'] = input("输入原始存档路径\n")
             elif inpu=='1':
-                config['Config']['BackupPath'] = input("输入备份存档路径")
+                config['Config']['BackupPath'] = input("输入备份存档路径\n")
             elif inpu=='2':
-                config['Config']['SleepTime'] = input("输入检测频率(s)")
+                config['Config']['SleepTime'] = input("输入检测频率(s)\n")
             elif inpu=='3':
                 break
     
@@ -86,8 +86,8 @@ def main():
     print("运行中")
     while True:
         system("CLS")
-        print("哈嗝哈哈哈嘎编程，用处是在网易基岩版我的世界关闭后自动备份存档至指定位置")
-        inpu=input('输入 0 更改配置文件, 1 立刻保存, 2 退出')
+        print("哈嗝哈哈哈嘎编程，能在网易基岩版我的世界关闭后自动备份存档至指定位置")
+        inpu=input('输入 0 更改配置文件, 1 立刻保存, 2 退出\n')
         if inpu=="0":
             config_setup(False)
         elif inpu=='1':
