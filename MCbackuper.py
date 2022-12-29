@@ -7,17 +7,14 @@ import threading
 
 def exefind(exename):
     # 检测程序存在函数
-    i = False
     pids = psutil.pids()
     for pid in pids:
-        pids = psutil.pids()
-        if pid not in pids:
+        try:
+            if psutil.Process(pid).name() == exename:
+                return True
+        except:
             continue
-        if psutil.Process(pid).name() == exename:
-            i = True
-            return True
-    if i == False:
-        return False
+    return False
 
 def config_setup(Create):
     # 配置配置文件函数
