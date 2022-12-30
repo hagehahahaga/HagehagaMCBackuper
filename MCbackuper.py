@@ -83,7 +83,7 @@ def backups():
         # 删除备份
         while True:
             os.system("CLS")
-            inpu=input('这个备份含有 %s 个存档,输入 0 删除, 1 返回\n'%(len(os.listdir(dir))))
+            inpu=input('这个备份含有 %s 个存档,输入 0 删除, 1 返回\n'%(len(os.listdir(dir))-1))
             if inpu=='0':
                 shutil.rmtree(dir)
                 print('删除成功')
