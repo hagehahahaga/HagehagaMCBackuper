@@ -8,6 +8,7 @@ import threading
 def config_setup(Create):
     # 配置配置文件
     global mainrun
+    global config
     mainrun=False
 
     if Create==True:
@@ -21,20 +22,23 @@ def config_setup(Create):
     else:
         while True:
             os.system("CLS")
-            inpu=input("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 返回\n")
+            inpu=input("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 不保存返回, 4 保存返回\n")
             if inpu=='0':
                 config['Config']['OriginalPath'] = input("输入原始存档路径\n")
-                print('更改成功')
                 time.sleep(uisleeptime)
             elif inpu=='1':
                 config['Config']['BackupPath'] = input("输入备份存档路径\n")
-                print('更改成功')
                 time.sleep(uisleeptime)
             elif inpu=='2':
                 config['Config']['SleepTime'] = input("输入检测频率(s)\n")
-                print('更改成功')
                 time.sleep(uisleeptime)
             elif inpu=='3':
+                config=ConfigObj("config.ini", encoding='UTF8')
+                break
+            elif inpu=='4':
+                config.write()
+                print('更改成功')
+                time.sleep(uisleeptime)
                 break
     
     mainrun=True
@@ -76,20 +80,45 @@ def run():
         time.sleep(int(config['Config']['SleepTime']))
 
 def backups():
-    # 管理备份
+    # 管理备份们
     global mainrun
     mainrun=False
-    def delbackup(dir):
-        # 删除备份
+    def DirsCount(dir):
+        #存档计数
+        Count=0
+        for dirs in os.listdir(dir):
+            if os.path.isdir(dir+os.sep+dirs)==True:
+                Count+=1
+        return Count
+
+    def backup(dir):
+        # 管理备份
         while True:
             os.system("CLS")
-            inpu=input('这个备份含有 %s 个存档,输入 0 删除, 1 返回\n'%(len(os.listdir(dir))-1))
+
+            inpu=input('这个备份含有 %s 个存档, 原存档有 %s 个存档, 输入 0 删除, 1 回档, 2 返回\n'%(DirsCount(dir),DirsCount(config['Config']['OriginalPath'])))
             if inpu=='0':
                 shutil.rmtree(dir)
                 print('删除成功')
                 time.sleep(uisleeptime)
                 break
+
             elif inpu=='1':
+                OriginalPath=config['Config']['OriginalPath']
+                OriginalPathName=''
+                for i in OriginalPath[::-1]:
+                    OriginalPath=OriginalPath[:-1]
+                    if i ==os.sep:
+                        break
+                    OriginalPathName+=i
+                OriginalPathName=OriginalPathName[::-1]
+                shutil.rmtree(config['Config']['OriginalPath'])
+                shutil.copytree(dir , OriginalPath + "/" + OriginalPathName)
+                print('回档成功')
+                time.sleep(uisleeptime)
+                break
+
+            elif inpu=='2':
                 break
 
     while True:
@@ -101,9 +130,9 @@ def backups():
             print('%s-%s'%(dir,dirlist[dir]))
         print('\n')
 
-        inpu=input('输入备份相应数字删除, %s 返回\n'%(len(dirlist)))
+        inpu=input('输入备份相应数字管理, %s 返回\n'%(len(dirlist)))
         if inpu in dirlist.keys():
-            delbackup(config['Config']['BackupPath'] + os.sep + dirlist[inpu])
+            backup(config['Config']['BackupPath'] + os.sep + dirlist[inpu])
         elif inpu==str(len(dirlist)):
             break
 
