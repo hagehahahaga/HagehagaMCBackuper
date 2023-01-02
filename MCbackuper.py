@@ -72,7 +72,7 @@ def run():
                 running = False
             if running == True:
                 if running1 == False:
-                    print("Game is running...")
+                    print("游戏运行中...")
                     running1 = running
             elif running1 == True:
                 save()
