@@ -181,7 +181,7 @@ def logs_export():
     if not bool(config['Config']['AutoSaveLogs']):
         return
 
-    printf('导出日志中','main',0)
+    printf('导出日志中......','main',0)
     logs_local=deepcopy(logs)
     logs_local['main']=logs_local['main'][2:]
     logs_local_thin=[]
