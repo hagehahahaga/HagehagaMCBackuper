@@ -1,5 +1,3 @@
-import atexit
-from copy import deepcopy
 from itertools import count
 import psutil
 import time
@@ -82,13 +80,7 @@ def save():
 
 def exeExist(exename):
     '''检测程序运行'''
-    for pid in psutil.pids():
-        try:
-            if psutil.Process(pid).name() == exename:
-                return True
-        except:
-            return exeExist(exename)
-    return False
+    return exename in map(lambda x:x.name(),psutil.process_iter())
 
 def run():
     '''检测运行'''
@@ -166,34 +158,6 @@ def backups():
 
     mainrun=True
 
-@atexit.register
-def exit_save():
-    '''退出保护'''
-    if bool(config['Config']['AutoSaveLogs'])==False:
-        return
-    logs_export()
-
-def logs_export():
-    '''导出日志'''
-    def sort_key(elem:str)->int:
-        return int(elem[0:8]+elem[9:14])
-
-    if not bool(config['Config']['AutoSaveLogs']):
-        return
-
-    printf('导出日志中......','main',0)
-    logs_local=deepcopy(logs)
-    logs_local['main']=logs_local['main'][2:]
-    logs_local_thin=[]
-    for log in logs_local.values():
-        logs_local_thin.extend(log)
-    logs_local=logs_local_thin
-    del logs_local_thin
-    logs_local.sort(key=sort_key)
-
-    with open('log - '+time.strftime("%Y%m%d %H%M%S", time.localtime())+'.txt','w') as file:
-        file.write('\n'.join(logs_local))
-
 def main():
     '''主函数'''
     def logs_reset():
@@ -201,7 +165,7 @@ def main():
         global logs
         logs={}
         logs['main']=['哈嗝哈哈哈嘎编程，能在网易基岩版我的世界关闭后自动备份存档至指定位置',\
-            '输入 0 进入设置, 1 立刻保存, 2 管理备份, 3 清除日志, 4 导出日志, 5 退出']
+            '输入 0 进入设置, 1 立刻保存, 2 管理备份, 3 清除日志, 5 退出']
 
     def exit():
         '''退出程序'''
@@ -220,7 +184,7 @@ def main():
     
     Thread_run=threading.Thread(target = run)
     Thread_run.start()
-    inpu_dict=dict(zip(map(lambda x:str(x),count()),(config_setup,save,backups,logs_reset,logs_export,exit)))
+    inpu_dict=dict(zip(map(lambda x:str(x),count()),(config_setup,save,backups,logs_reset,exit)))
     while not Exit:
         os.system("CLS")
         printlog('main')
