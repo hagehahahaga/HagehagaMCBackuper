@@ -14,6 +14,8 @@ def printf(inpu:str,func:str,level:int)->None:
         logs[func]=[]
     logs[func].append(inpu)
     print(inpu)
+    if bool(config['Config']['LogsToFile']):
+        log_write(inpu)
 
 def inputf(inpu:str,func:str)->str:
     if func not in logs.keys():
@@ -24,9 +26,15 @@ def inputf(inpu:str,func:str)->str:
         inpu_formarted+='\n'
     inpu=input(inpu_formarted)
     logs[func].append('%s - %s - [IPU] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,inpu))
+    if bool(config['Config']['LogsToFile']):
+        log_write(inpu_formarted+inpu)
     return inpu
 
-def printlog(func):
+def log_write(input: str) -> None:
+    with open(file=log_file,mode='a') as file:
+        file.write(input+'\n')
+
+def printlog(func: str) -> None:
     if func not in logs:
         return
     print('\n'.join(logs[func]))
@@ -44,16 +52,16 @@ def config_setup():
         config['Config']['OriginalPath'] = inputf("输入原始存档路径",'config_setup')
         config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
         config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
-        config['Config']['AutoSaveLogs'] = True
+        config['Config']['LogsToFile'] = True
         config.write()
         mainrun=True
         return
 
-    inpu_dict=dict(zip(map(lambda x:str(x),count()),(('OriginalPath','原始存档路径','str'),('BackupPath','备份存档路径','str'),('SleepTime','检测频率(s)','int'),('AutoSaveLogs','回车为否, 反之为是','bool'))))
+    inpu_dict=dict(zip(map(lambda x:str(x),count()),(('OriginalPath','原始存档路径','str'),('BackupPath','备份存档路径','str'),('SleepTime','检测频率(s)','int'),('LogsToFile','回车为否, 反之为是','bool'))))
 
     while True:
         os.system("CLS")
-        print("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 更改自动保存日志, 4 取消, 5 确定")
+        print("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 更改是否输出日志到本地, 4 取消, 5 确定")
         printlog('config_setup')
 
         inpu=inputf('','config_setup')
@@ -198,6 +206,7 @@ def main():
             except Exception as error:
                 printf('错误: %s'%(error),'main',2)
 
+log_file='log - '+time.strftime("%Y%m%d %H%M%S", time.localtime())+'.txt'
 config=ConfigObj("config.ini", encoding='UTF8')
 Exit=False
 mainrun=True
