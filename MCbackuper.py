@@ -6,7 +6,11 @@ from configobj import ConfigObj
 import os
 import threading
 
-def printf(inpu:str,func:str,level:int)->None:
+def printf(
+        inpu:str,
+        func:str,
+        level:int
+        ) -> None:
     '''0:INF,1:ERR,2:DEB'''
     level_dict={0:'INF',1:'ERR',2:'DEB'}
     inpu='%s - %s - [%s] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,level_dict[level],inpu)
@@ -17,7 +21,10 @@ def printf(inpu:str,func:str,level:int)->None:
     if bool(config['Config']['LogsToFile']):
         log_write(inpu)
 
-def inputf(inpu:str,func:str)->str:
+def inputf(
+        inpu:str,
+        func:str
+        ) -> str:
     if func not in logs.keys():
         logs[func]=[]
     inpu_formarted=('%s - %s - [IPU] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,inpu))
@@ -30,29 +37,31 @@ def inputf(inpu:str,func:str)->str:
         log_write(inpu_formarted+inpu)
     return inpu
 
-def log_write(input: str) -> None:
+def log_write(
+        input:str
+        ) -> None:
     with open(file=log_file,mode='a') as file:
         file.write(input+'\n')
 
-def printlog(func: str) -> None:
+def printlog(
+        func:str
+        ) -> None:
     if func not in logs:
         return
     print('\n'.join(logs[func]))
 
-def config_setup():
+def config_setup() -> None:
     '''配置配置文件'''
     global mainrun
     global config
     mainrun=False
 
-    if config == {}:
+    if config['Config'] == {'LogsToFile':'True'}:
         os.system("CLS")
         printf("创建配置文件",'config_setup',0)
-        config['Config'] = {}
         config['Config']['OriginalPath'] = inputf("输入原始存档路径",'config_setup')
         config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
         config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
-        config['Config']['LogsToFile'] = True
         config.write()
         mainrun=True
         return
@@ -81,16 +90,16 @@ def config_setup():
     
     mainrun=True
 
-def save():
+def save() -> None:
     '''保存存档'''
     shutil.copytree(config['Config']['OriginalPath'], config['Config']['BackupPath'] + "/" + time.strftime("%Y%m%d %H%M", time.localtime()))
     printf('备份至%s'%(config['Config']['BackupPath']),'main',0)
 
-def exeExist(exename):
+def exeExist(exename:str) -> bool:
     '''检测程序运行'''
     return exename in map(lambda x:x.name(),psutil.process_iter())
 
-def run():
+def run() -> None:
     '''检测运行'''
     running1 = False
     while not Exit:
@@ -104,12 +113,12 @@ def run():
             save()
         running1 = running
 
-def backups():
+def backups() -> None:
     '''管理备份们'''
-    def backup(dir):
+    def backup(dir:str) -> None:
         '''管理备份'''
         nonlocal inpu
-        def DirsCount(dir):
+        def DirsCount(dir:str) -> int:
             '''存档计数'''
             Count=0
             for dirs in os.listdir(dir):
@@ -151,31 +160,29 @@ def backups():
         print('备份如下:')
         dirlist=os.listdir(config['Config']['BackupPath'])
         dirlist=dict(zip(count(),dirlist))
-        print('\n'.join(map(lambda x:'%s - %s'%(x,dirlist[x]),dirlist)))
-        print('\n')
-
-        print('当前共有 %s 个备份, 输入备份相应数字管理, %s 返回'%(len(dirlist),len(dirlist)))
+        print('\n'.join(map(lambda x:f'{x} - {dirlist[x]}',dirlist)),
+              f'\n\n当前共有 {len(dirlist)} 个备份, 输入备份相应数字管理, {len(dirlist)} 返回')
         printlog('backups')
 
         try:inpu=int(inputf('','backups'))
         except:continue
-        if inpu in dirlist.keys():
+        if inpu in dirlist:
             backup(config['Config']['BackupPath'] + os.sep + dirlist[inpu])
         elif inpu==len(dirlist):
             break
 
     mainrun=True
 
-def main():
+def main() -> None:
     '''主函数'''
-    def logs_reset():
+    def logs_reset() -> None:
         '''重置日志'''
         global logs
         logs={}
-        logs['main']=['哈嗝哈哈哈嘎编程，能在网易基岩版我的世界关闭后自动备份存档至指定位置',\
-            '输入 0 进入设置, 1 立刻保存, 2 管理备份, 3 清除日志, 5 退出']
+        logs['main']=['哈嗝哈哈哈嘎编程，能在网易基岩版我的世界关闭后自动备份存档至指定位置',
+            '输入 0 进入设置, 1 立刻保存, 2 管理备份, 3 清除日志, 4 退出']
 
-    def exit():
+    def exit() -> None:
         '''退出程序'''
         global Exit
         printf('退出中......请稍等','main',0)
@@ -187,6 +194,7 @@ def main():
     logs_reset()
 
     if config == {}:
+        config['Config'] = {'LogsToFile':'True'}
         printf('未创建配置文件','main',1)
         config_setup()
     
