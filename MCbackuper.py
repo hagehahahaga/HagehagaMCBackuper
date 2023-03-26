@@ -13,7 +13,7 @@ def printf(
         ) -> None:
     '''0:INF,1:ERR,2:DEB'''
     level_dict={0:'INF',1:'ERR',2:'DEB'}
-    inpu='%s - %s - [%s] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,level_dict[level],inpu)
+    inpu=f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [{level_dict[level]}] {inpu}'
     if func not in logs.keys():
         logs[func]=[]
     logs[func].append(inpu)
@@ -27,12 +27,12 @@ def inputf(
         ) -> str:
     if func not in logs.keys():
         logs[func]=[]
-    inpu_formarted=('%s - %s - [IPU] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,inpu))
+    inpu_formarted=f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [IPU] {inpu}'
     if inpu!='':
         logs[func].append(inpu_formarted)
         inpu_formarted+='\n'
     inpu=input(inpu_formarted)
-    logs[func].append('%s - %s - [IPU] %s'%(time.strftime("%Y%m%d %H%M%S", time.localtime()),func,inpu))
+    logs[func].append(f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [IPU] {inpu}')
     if bool(config['Config']['LogsToFile']):
         log_write(inpu_formarted+inpu)
     return inpu
@@ -52,9 +52,8 @@ def printlog(
 
 def config_setup() -> None:
     '''配置配置文件'''
-    global mainrun
     global config
-    mainrun=False
+    ThreadLock.acquire()
 
     if config['Config'] == {'LogsToFile':'True'}:
         os.system("CLS")
@@ -63,7 +62,7 @@ def config_setup() -> None:
         config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
         config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
         config.write()
-        mainrun=True
+        ThreadLock.release()
         return
 
     inpu_dict=dict(zip(map(lambda x:str(x),count()),(('OriginalPath','原始存档路径','str'),('BackupPath','备份存档路径','str'),('SleepTime','检测频率(s)','int'),('LogsToFile','回车为否, 反之为是','bool'))))
@@ -76,9 +75,9 @@ def config_setup() -> None:
         inpu=inputf('','config_setup')
         if inpu in inpu_dict:
             try:
-                config['Config'][inpu_dict[inpu][0]]=eval(inpu_dict[inpu][2])(inputf("当前为 %s , 输入%s"%(config['Config'][inpu_dict[inpu][0]],inpu_dict[inpu][1]),'config_setup'))
+                config['Config'][inpu_dict[inpu][0]]=eval(inpu_dict[inpu][2])(inputf(f"当前为 {config['Config'][inpu_dict[inpu][0]]} , 输入{inpu_dict[inpu][1]}",'config_setup'))
             except Exception as exception:
-                printf('错误:%s'%(exception),'config_setup',1)
+                printf(f'错误: {exception}','config_setup',1)
         elif inpu=='4':
             config=ConfigObj("config.ini", encoding='UTF8')
             break
@@ -88,7 +87,7 @@ def config_setup() -> None:
             time.sleep(uisleeptime)
             break
     
-    mainrun=True
+    ThreadLock.release()
 
 def save() -> None:
     '''保存存档'''
@@ -103,8 +102,10 @@ def run() -> None:
     '''检测运行'''
     running1 = False
     while not Exit:
+        ThreadLock.acquire()
         running = exeExist("Minecraft.Windows.exe")
-        if running==running1 or not mainrun:
+        if running==running1:
+            ThreadLock.release()
             time.sleep(int(config['Config']['SleepTime']))
             continue
         if running:
@@ -112,6 +113,7 @@ def run() -> None:
         else:
             save()
         running1 = running
+        ThreadLock.release()
 
 def backups() -> None:
     '''管理备份们'''
@@ -128,7 +130,7 @@ def backups() -> None:
         os.system("CLS")
 
         while True:
-            inpu=inputf('备份 %s 含有 %s 个存档, 原存档有 %s 个存档, 输入 0 删除, 1 回档, 2 返回'%(dirlist[inpu],DirsCount(dir),DirsCount(config['Config']['OriginalPath'])),'backups')
+            inpu=inputf(f'备份{dirlist[inpu]} 含有 {DirsCount(dir)} 个存档, 原存档有 {DirsCount(config["Config"]["OriginalPath"])} 个存档, 输入 0 删除, 1 回档, 2 返回','backups')
             if inpu=='0':
                 shutil.rmtree(dir)
                 printf('删除成功','backups',0)
@@ -152,8 +154,7 @@ def backups() -> None:
             
             elif inpu=='2':
                 break
-    global mainrun
-    mainrun=False
+    ThreadLock.acquire()
 
     while True:
         os.system("CLS")
@@ -171,7 +172,7 @@ def backups() -> None:
         elif inpu==len(dirlist):
             break
 
-    mainrun=True
+    ThreadLock.release()
 
 def main() -> None:
     '''主函数'''
@@ -217,6 +218,6 @@ def main() -> None:
 log_file='log - '+time.strftime("%Y%m%d %H%M%S", time.localtime())+'.txt'
 config=ConfigObj("config.ini", encoding='UTF8')
 Exit=False
-mainrun=True
+ThreadLock=threading.Lock()
 uisleeptime=0.5
 main()
