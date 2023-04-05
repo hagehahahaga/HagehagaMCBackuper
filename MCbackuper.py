@@ -53,46 +53,113 @@ def printlog(
 def config_setup() -> None:
     '''配置配置文件'''
     global config
-    ThreadLock.acquire()
+    thread_lock()
 
-    if config['Config'] == {'LogsToFile':'True'}:
+    if config['Config'] == {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1'}:
         os.system("CLS")
         printf("创建配置文件",'config_setup',0)
         config['Config']['OriginalPath'] = inputf("输入原始存档路径",'config_setup')
         config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
         config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
         config.write()
-        ThreadLock.release()
+        thread_run_lock.release()
         return
 
-    inpu_dict=dict(zip(map(lambda x:str(x),count()),(('OriginalPath','原始存档路径','str'),('BackupPath','备份存档路径','str'),('SleepTime','检测频率(s)','int'),('LogsToFile','回车为否, 反之为是','bool'))))
+    inpu_dict=dict(
+        zip(
+            map(
+                str,
+                count()
+            ),
+            (
+                (
+                    'OriginalPath',
+                    '原始存档路径',
+                    'str'
+                ),
+                (
+                    'BackupPath',
+                    '备份存档路径',
+                    'str'
+                ),
+                (
+                    'SleepTime',
+                    '检测频率(s)',
+                    'int'
+                ),
+                (
+                    'LogsToFile',
+                    '回车为否, 反之为是',
+                    'bool'
+                ),
+                (
+                    'AutoSave',
+                    '回车为否, 反之为是',
+                    'bool'
+                ),
+                (
+                    'AutoSaveTime',
+                    '自动备份间隔(h)',
+                    'int'
+                )
+            )
+        )
+    )
+    inpu_dict_len=len(inpu_dict)
 
     while True:
         os.system("CLS")
-        print("输入 0 更改原始存档路径, 1 更改备份存档路径, 2 更改检测频率(s), 3 更改是否输出日志到本地, 4 取消, 5 确定")
+        print(
+            '输入',
+            ', '.join(
+                map(
+                    lambda x, y:(
+                        f'{x} {y}'
+                    ),
+                    count(),
+                    (
+                        '更改原始存档路径',
+                        '更改备份存档路径',
+                        '更改检测频率(s)',
+                        '更改是否输出日志到本地',
+                        '更改是否开启自动备份',
+                        '更改自动备份间隔(h)',
+                        '取消',
+                        '确定'
+                    )
+                )
+            )
+        )
         printlog('config_setup')
 
         inpu=inputf('','config_setup')
         if inpu in inpu_dict:
             try:
-                config['Config'][inpu_dict[inpu][0]]=eval(inpu_dict[inpu][2])(inputf(f"当前为 {config['Config'][inpu_dict[inpu][0]]} , 输入{inpu_dict[inpu][1]}",'config_setup'))
+                config ['Config'] [inpu_dict [inpu] [0]] = eval(inpu_dict [inpu] [2]) (inputf(f"当前为 {config ['Config'] [inpu_dict [inpu] [0]]}, 输入{inpu_dict [inpu] [1]}",'config_setup'))
             except Exception as exception:
                 printf(f'错误: {exception}','config_setup',1)
-        elif inpu=='4':
+        if inpu==str(inpu_dict_len):
             config=ConfigObj("config.ini", encoding='UTF8')
             break
-        elif inpu=='5':
+        if inpu==str(inpu_dict_len+1):
             config.write()
             printf('更改成功','config_setup',0)
             time.sleep(uisleeptime)
             break
     
-    ThreadLock.release()
+    thread_unlock()
 
-def save() -> None:
+def save(*tags) -> None:
     '''保存存档'''
-    shutil.copytree(config['Config']['OriginalPath'], config['Config']['BackupPath'] + "/" + time.strftime("%Y%m%d %H%M", time.localtime()))
-    printf('备份至%s'%(config['Config']['BackupPath']),'main',0)
+    tags=' '.join(map(str,tags))
+    shutil.copytree(
+        config['Config']['OriginalPath'],
+        config['Config']['BackupPath'] +
+        os.sep +
+        time.strftime("%Y%m%d %H%M", time.localtime()) +
+        tags
+    )
+    printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}",'main',0)
 
 def exeExist(exename:str) -> bool:
     '''检测程序运行'''
@@ -102,10 +169,10 @@ def run() -> None:
     '''检测运行'''
     running1 = False
     while not Exit:
-        ThreadLock.acquire()
+        thread_run_lock.acquire()
         running = exeExist("Minecraft.Windows.exe")
         if running==running1:
-            ThreadLock.release()
+            thread_run_lock.release()
             time.sleep(int(config['Config']['SleepTime']))
             continue
         if running:
@@ -113,7 +180,7 @@ def run() -> None:
         else:
             save()
         running1 = running
-        ThreadLock.release()
+        thread_run_lock.release()
 
 def backups() -> None:
     '''管理备份们'''
@@ -154,7 +221,8 @@ def backups() -> None:
             
             elif inpu=='2':
                 break
-    ThreadLock.acquire()
+
+    thread_lock()
 
     while True:
         os.system("CLS")
@@ -172,7 +240,35 @@ def backups() -> None:
         elif inpu==len(dirlist):
             break
 
-    ThreadLock.release()
+    thread_unlock()
+
+def auto_save():
+    '''自动保存'''
+    while not Exit:
+        can_exit_sleep(int(config['Config']['AutoSaveTime'])*3600)
+        if thread_autosave_lock.acquire(0) and exeExist("Minecraft.Windows.exe"):
+            save('AutoSave')
+        thread_autosave_lock.release()
+
+def thread_lock():
+    '''一键上线程锁'''
+    if bool(config['Config']['AutoSave']):
+        try:thread_autosave_lock.acquire()
+        except:...
+    thread_run_lock.acquire()
+
+def thread_unlock():
+    '''一键解线程锁'''
+    if bool(config['Config']['AutoSave']):
+        try:thread_autosave_lock.release()
+        except:...
+    thread_run_lock.release()
+
+def can_exit_sleep(sleep_time: int) -> None:
+    '''由Exit布尔值控制退出的sleep'''
+    while not Exit and sleep_time > 0:
+        time.sleep(1)
+        sleep_time-=1
 
 def main() -> None:
     '''主函数'''
@@ -195,12 +291,17 @@ def main() -> None:
     logs_reset()
 
     if config == {}:
-        config['Config'] = {'LogsToFile':'True'}
+        config['Config'] = {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1'}
         printf('未创建配置文件','main',1)
         config_setup()
     
-    Thread_run=threading.Thread(target = run)
-    Thread_run.start()
+    threading.Thread(target = run).start()
+
+    if not bool(config['Config']['AutoSave']):
+        thread_autosave_lock.acquire()
+    
+    threading.Thread(target = auto_save).start()
+
     inpu_dict=dict(zip(map(lambda x:str(x),count()),(config_setup,save,backups,logs_reset,exit)))
     while not Exit:
         os.system("CLS")
@@ -218,6 +319,7 @@ def main() -> None:
 log_file='log - '+time.strftime("%Y%m%d %H%M%S", time.localtime())+'.txt'
 config=ConfigObj("config.ini", encoding='UTF8')
 Exit=False
-ThreadLock=threading.Lock()
+thread_run_lock=threading.Lock()
+thread_autosave_lock=threading.Lock()
 uisleeptime=0.5
 main()
