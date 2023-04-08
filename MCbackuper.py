@@ -56,14 +56,16 @@ def config_setup() -> None:
     global config
     thread_lock()
 
-    if config['Config'] == {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1'}:
+    if not config['Config'].get('OriginalPath'):
         os.system("CLS")
         printf("创建配置文件",'config_setup',0)
         config['Config']['OriginalPath'] = inputf("输入原始存档路径",'config_setup')
         config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
         config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
+        config['Config']['AutoSaveTime'] = '1'
+        config['Config']['Version'] = version
         config.write()
-        thread_run_lock.release()
+        thread_unlock()
         return
 
     inpu_dict=dict(
@@ -298,14 +300,15 @@ def main() -> None:
     logs_reset()
 
     if config == {}:
-        config['Config'] = {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1',}
-        print('未创建配置文件')
+        os.mkdir('.\logs')
+        config['Config'] = {}
+        config['Config']['LogsToFile'] = 'True'
+        config['Config']['AutoSave'] = 'False'
+        printf('未创建配置文件','config_setup',0)
         config_setup()
 
     version_config=list(map(int,config['Config'].get('Version',[])))
     if version != version_config:
-        print(f'程序原版本: {version_config}, 现在版本: {version}, 进行用户文件更新...')
-
         list(
             map(
                 lambda x: eval(f'updater.v{"_".join(map(str,x))}')(),
@@ -331,7 +334,7 @@ def main() -> None:
         config['Config']['Version']=version
         config.write()
 
-        print('更新完毕')
+        printf(f'用户文件更新完毕, 程序原版本: {version_config}, 现在版本: {version}','main',0)
         input('按回车继续')
 
     threading.Thread(target = run).start()
@@ -355,7 +358,7 @@ def main() -> None:
             except Exception as error:
                 printf('错误: %s'%(error),'main',2)
 
-version              = [1,1,1]
+version              = [1,2,0]
 log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config               = ConfigObj("config.ini", encoding='UTF8')
 Exit                 = False

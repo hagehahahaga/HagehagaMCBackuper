@@ -1,7 +1,7 @@
 import shutil
 import os
 
-def v1_1_1():
+def v1_2_0():
     os.mkdir('logs')
     list(#日志文件移入loga文件夹
         map(
