@@ -1,14 +1,15 @@
-from itertools import count
+import itertools
 import psutil
 import time
 import shutil
 from configobj import ConfigObj
 import os
 import threading
+import updater
 
 def printf(
-        inpu:str,
-        func:str,
+        inpu: str,
+        func: str,
         level:int
         ) -> None:
     '''0:INF,1:ERR,2:DEB'''
@@ -22,8 +23,8 @@ def printf(
         log_write(inpu)
 
 def inputf(
-        inpu:str,
-        func:str
+        inpu: str,
+        func: str
         ) -> str:
     if func not in logs.keys():
         logs[func]=[]
@@ -69,7 +70,7 @@ def config_setup() -> None:
         zip(
             map(
                 str,
-                count()
+                itertools.count()
             ),
             (
                 (
@@ -116,7 +117,7 @@ def config_setup() -> None:
                     lambda x, y:(
                         f'{x} {y}'
                     ),
-                    count(),
+                    itertools.count(),
                     (
                         '更改原始存档路径',
                         '更改备份存档路径',
@@ -189,11 +190,7 @@ def backups() -> None:
         nonlocal inpu
         def DirsCount(dir:str) -> int:
             '''存档计数'''
-            Count=0
-            for dirs in os.listdir(dir):
-                if os.path.isdir(dir+os.sep+dirs):
-                    Count+=1
-            return Count
+            return next(os.walk(dir))[1]
         os.system("CLS")
 
         while True:
@@ -228,9 +225,18 @@ def backups() -> None:
         os.system("CLS")
         print('备份如下:')
         dirlist=os.listdir(config['Config']['BackupPath'])
-        dirlist=dict(zip(count(),dirlist))
-        print('\n'.join(map(lambda x:f'{x} - {dirlist[x]}',dirlist)),
-              f'\n\n当前共有 {len(dirlist)} 个备份, 输入备份相应数字管理, {len(dirlist)} 返回')
+        dirlist=dict(zip(itertools.count(),dirlist))
+        print(
+            '\n'.join(
+                map(
+                    lambda x:(
+                        f'{x} - {dirlist[x]}'
+                    ),
+                    dirlist
+                )
+            ),
+            f'\n\n当前共有 {len(dirlist)} 个备份, 输入备份相应数字管理, {len(dirlist)} 返回'
+        )
         printlog('backups')
 
         try:inpu=int(inputf('','backups'))
@@ -287,14 +293,47 @@ def main() -> None:
 
     global logs
     global Exit
+
     os.system("title 哈嗝哈嘎MCBackuper")
     logs_reset()
 
     if config == {}:
-        config['Config'] = {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1'}
-        printf('未创建配置文件','main',1)
+        config['Config'] = {'LogsToFile':'True','AutoSave':'False','AutoSaveTime':'1',}
+        print('未创建配置文件')
         config_setup()
-    
+
+    version_config=list(map(int,config['Config'].get('Version',[])))
+    if version != version_config:
+        print(f'程序原版本: {version_config}, 现在版本: {version}, 进行用户文件更新...')
+
+        list(
+            map(
+                lambda x: eval(f'updater.v{"_".join(map(str,x))}')(),
+                filter(
+                    lambda version: version_config < version,
+                    sorted(
+                        map(
+                            lambda x: list(
+                                map(
+                                    int,
+                                    x[1:].split('_')
+                                )
+                            ),
+                            filter(
+                                lambda x: x.startswith('v'),
+                                dir(updater)
+                            )
+                        )
+                    )
+                )
+            )
+        )
+        config['Config']['Version']=version
+        config.write()
+
+        print('更新完毕')
+        input('按回车继续')
+
     threading.Thread(target = run).start()
 
     if not bool(config['Config']['AutoSave']):
@@ -302,7 +341,7 @@ def main() -> None:
     
     threading.Thread(target = auto_save).start()
 
-    inpu_dict=dict(zip(map(lambda x:str(x),count()),(config_setup,save,backups,logs_reset,exit)))
+    inpu_dict=dict(zip(map(lambda x:str(x),itertools.count()),(config_setup,save,backups,logs_reset,exit)))
     while not Exit:
         os.system("CLS")
         printlog('main')
@@ -316,10 +355,11 @@ def main() -> None:
             except Exception as error:
                 printf('错误: %s'%(error),'main',2)
 
-log_file='log - '+time.strftime("%Y%m%d %H%M%S", time.localtime())+'.txt'
-config=ConfigObj("config.ini", encoding='UTF8')
-Exit=False
-thread_run_lock=threading.Lock()
-thread_autosave_lock=threading.Lock()
-uisleeptime=0.5
+version              = [1,1,1]
+log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
+config               = ConfigObj("config.ini", encoding='UTF8')
+Exit                 = False
+thread_run_lock      = threading.Lock()
+thread_autosave_lock = threading.Lock()
+uisleeptime          = 0.5
 main()
