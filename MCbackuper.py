@@ -190,38 +190,58 @@ def run() -> None:
 
 def backups() -> None:
     '''管理备份们'''
-    def backup(dir:str) -> None:
+    def backup(dir: str) -> None:
         '''管理备份'''
-        nonlocal inpu
-        def DirsCount(dir:str) -> int:
-            '''存档计数'''
-            return next(os.walk(dir))[1]
-        os.system("CLS")
 
+        worlds_backup=next(os.walk(dir))[1]
+        worlds_original=next(os.walk(config["Config"]["OriginalPath"]))[1]
         while True:
-            inpu=inputf(f'备份{dirlist[inpu]} 含有 {DirsCount(dir)} 个存档, 原存档有 {DirsCount(config["Config"]["OriginalPath"])} 个存档, 输入 0 删除, 1 回档, 2 返回', func = 'backups')
-            if inpu=='0':
+            inpu_backup=inputf(f'备份{dirlist[inpu]} 含有 {len(worlds_backup)} 个存档, 原存档有 {len(worlds_original)} 个存档, 输入 0 删除, 1 回档, 2 展示差异, 3 返回', func = 'backups')
+            if inpu_backup=='0':
                 shutil.rmtree(dir)
                 printf('删除成功', func = 'backups')
                 time.sleep(uisleeptime)
                 break
 
-            elif inpu=='1':
+            elif inpu_backup=='1':
                 if exeExist("Minecraft.Windows.exe"):
                     printf('游戏运行中,请关闭游戏再回档', level = 1, func = 'backups')
                     time.sleep(uisleeptime)
                     break
 
-                OriginalPath=config['Config']['OriginalPath']
-                OriginalPathName=OriginalPath[-OriginalPath[::-1].find(os.sep):]
-                OriginalPath=OriginalPath[:-OriginalPath[::-1].find(os.sep)-1]
+                OriginalPath=config['Config']['OriginalPath'].split(os.sep)
+                OriginalPathName=OriginalPath[-1]
+                OriginalPath=os.sep.join(OriginalPath[:-1])
                 shutil.rmtree(config['Config']['OriginalPath'])
                 shutil.copytree(dir , OriginalPath + "/" + OriginalPathName)
                 printf('回档成功', func = 'backups')
                 time.sleep(uisleeptime)
                 break
-            
-            elif inpu=='2':
+
+            elif inpu_backup=='2':
+                worlds_backup_max_len=len(max(worlds_backup))
+                printf(
+                    f'\n{"备份存档:".ljust(worlds_backup_max_len-4)} - 原存档:\n' +
+                    '\n'.join(
+                        itertools.chain(
+                            map(
+                                lambda x: f'{x.ljust(worlds_backup_max_len)} - {x}',
+                                sorted(set(worlds_backup) & set(worlds_original))
+                            ),
+                            map(
+                                lambda x: f'{x.ljust(worlds_backup_max_len)} - ',
+                                sorted(set(worlds_backup) - set(worlds_original))
+                            ),
+                            map(
+                                lambda x: f'{"".ljust(worlds_backup_max_len)} - {x}',
+                                sorted(set(worlds_original) - set(worlds_backup))
+                            )
+                        )
+                    ),
+                    func = 'backups'
+                )
+
+            elif inpu_backup=='3':
                 break
 
     thread_lock()
@@ -229,8 +249,7 @@ def backups() -> None:
     while True:
         os.system("CLS")
         print('备份如下:')
-        dirlist=os.listdir(config['Config']['BackupPath'])
-        dirlist=dict(zip(itertools.count(),dirlist))
+        dirlist=dict(zip(itertools.count(), os.listdir(config['Config']['BackupPath'])))
         print(
             '\n'.join(
                 map(
