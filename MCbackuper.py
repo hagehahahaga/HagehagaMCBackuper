@@ -380,7 +380,7 @@ def main() -> None:
             except Exception as error:
                 printf('错误: %s'%(error), level = 2, func = 'main')
 
-version              = [1,2,0]
+version              = [1,2,1]
 log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config               = ConfigObj("config.ini", encoding='UTF8')
 Exit                 = False
