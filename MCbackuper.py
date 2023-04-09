@@ -225,15 +225,15 @@ def backups() -> None:
                     '\n'.join(
                         itertools.chain(
                             map(
-                                lambda x: f'{x.ljust(worlds_backup_max_len)} - {x}',
+                                lambda x: f'{x.ljust(worlds_backup_max_len,"-")} - {x}',
                                 sorted(set(worlds_backup) & set(worlds_original))
                             ),
                             map(
-                                lambda x: f'{x.ljust(worlds_backup_max_len)} - ',
+                                lambda x: f'{x.ljust(worlds_backup_max_len,"-")} - ',
                                 sorted(set(worlds_backup) - set(worlds_original))
                             ),
                             map(
-                                lambda x: f'{"".ljust(worlds_backup_max_len)} - {x}',
+                                lambda x: f'{"".ljust(worlds_backup_max_len,"-")} - {x}',
                                 sorted(set(worlds_original) - set(worlds_backup))
                             )
                         )
