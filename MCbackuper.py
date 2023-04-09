@@ -1,3 +1,4 @@
+import inspect
 import itertools
 import psutil
 import time
@@ -8,11 +9,12 @@ import threading
 import updater
 
 def printf(
-        inpu: str,
-        func: str,
-        level:int
+        inpu:  str,
+        **keys
         ) -> None:
-    '''0:INF,1:ERR,2:DEB'''
+    '''key: 0 - INF,1 - ERR,2 - DEB func'''
+    level = keys.get('level', 0)
+    func = keys.get('func', inspect.stack()[1][3])
     level_dict={0:'INF',1:'ERR',2:'DEB'}
     inpu=f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [{level_dict[level]}] {inpu}'
     if func not in logs.keys():
@@ -24,8 +26,9 @@ def printf(
 
 def inputf(
         inpu: str,
-        func: str
+        **keys
         ) -> str:
+    func = keys.get('func', inspect.stack()[1][3])
     if func not in logs.keys():
         logs[func]=[]
     inpu_formarted=f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [IPU] {inpu}'
@@ -58,10 +61,10 @@ def config_setup() -> None:
 
     if not config['Config'].get('OriginalPath'):
         os.system("CLS")
-        printf("创建配置文件",'config_setup',0)
-        config['Config']['OriginalPath'] = inputf("输入原始存档路径",'config_setup')
-        config['Config']['BackupPath'] = inputf("输入备份存档路径",'config_setup')
-        config['Config']['SleepTime'] = inputf("输入检测频率(s)",'config_setup')
+        printf("创建配置文件")
+        config['Config']['OriginalPath'] = inputf("输入原始存档路径")
+        config['Config']['BackupPath'] = inputf("输入备份存档路径")
+        config['Config']['SleepTime'] = inputf("输入检测频率(s)")
         config['Config']['AutoSaveTime'] = '1'
         config['Config']['Version'] = version
         config.write()
@@ -135,18 +138,18 @@ def config_setup() -> None:
         )
         printlog('config_setup')
 
-        inpu=inputf('','config_setup')
+        inpu=inputf('')
         if inpu in inpu_dict:
             try:
-                config ['Config'] [inpu_dict [inpu] [0]] = eval(inpu_dict [inpu] [2]) (inputf(f"当前为 {config ['Config'] [inpu_dict [inpu] [0]]}, 输入{inpu_dict [inpu] [1]}",'config_setup'))
+                config ['Config'] [inpu_dict [inpu] [0]] = eval(inpu_dict [inpu] [2]) (inputf(f"当前为 {config ['Config'] [inpu_dict [inpu] [0]]}, 输入{inpu_dict [inpu] [1]}"))
             except Exception as exception:
-                printf(f'错误: {exception}','config_setup',1)
+                printf(f'错误: {exception}',level=1)
         if inpu==str(inpu_dict_len):
             config=ConfigObj("config.ini", encoding='UTF8')
             break
         if inpu==str(inpu_dict_len+1):
             config.write()
-            printf('更改成功','config_setup',0)
+            printf('更改成功')
             time.sleep(uisleeptime)
             break
     
@@ -162,7 +165,7 @@ def save(*tags) -> None:
         time.strftime("%Y%m%d %H%M", time.localtime()) +
         tags
     )
-    printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}",'main',0)
+    printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}",func = 'main')
 
 def exeExist(exename:str) -> bool:
     '''检测程序运行'''
@@ -179,7 +182,7 @@ def run() -> None:
             time.sleep(int(config['Config']['SleepTime']))
             continue
         if running:
-            printf("游戏运行中...",'main',0)
+            printf("游戏运行中...", func = 'main')
         else:
             save()
         running1 = running
@@ -196,16 +199,16 @@ def backups() -> None:
         os.system("CLS")
 
         while True:
-            inpu=inputf(f'备份{dirlist[inpu]} 含有 {DirsCount(dir)} 个存档, 原存档有 {DirsCount(config["Config"]["OriginalPath"])} 个存档, 输入 0 删除, 1 回档, 2 返回','backups')
+            inpu=inputf(f'备份{dirlist[inpu]} 含有 {DirsCount(dir)} 个存档, 原存档有 {DirsCount(config["Config"]["OriginalPath"])} 个存档, 输入 0 删除, 1 回档, 2 返回', func = 'backups')
             if inpu=='0':
                 shutil.rmtree(dir)
-                printf('删除成功','backups',0)
+                printf('删除成功', func = 'backups')
                 time.sleep(uisleeptime)
                 break
 
             elif inpu=='1':
                 if exeExist("Minecraft.Windows.exe"):
-                    printf('游戏运行中,请关闭游戏再回档','backups',1)
+                    printf('游戏运行中,请关闭游戏再回档', level = 1, func = 'backups')
                     time.sleep(uisleeptime)
                     break
 
@@ -214,7 +217,7 @@ def backups() -> None:
                 OriginalPath=OriginalPath[:-OriginalPath[::-1].find(os.sep)-1]
                 shutil.rmtree(config['Config']['OriginalPath'])
                 shutil.copytree(dir , OriginalPath + "/" + OriginalPathName)
-                printf('回档成功','backups',0)
+                printf('回档成功', func = 'backups')
                 time.sleep(uisleeptime)
                 break
             
@@ -241,7 +244,7 @@ def backups() -> None:
         )
         printlog('backups')
 
-        try:inpu=int(inputf('','backups'))
+        try:inpu=int(inputf(''))
         except:continue
         if inpu in dirlist:
             backup(config['Config']['BackupPath'] + os.sep + dirlist[inpu])
@@ -290,7 +293,7 @@ def main() -> None:
     def exit() -> None:
         '''退出程序'''
         global Exit
-        printf('退出中......请稍等','main',0)
+        printf('退出中......请稍等', func = 'main')
         Exit=True
 
     global logs
@@ -304,7 +307,7 @@ def main() -> None:
         config['Config'] = {}
         config['Config']['LogsToFile'] = 'True'
         config['Config']['AutoSave'] = 'False'
-        printf('未创建配置文件','config_setup',0)
+        printf('未创建配置文件', level = 1, func = 'config_setup')
         config_setup()
 
     version_config=list(map(int,config['Config'].get('Version',[])))
@@ -334,7 +337,7 @@ def main() -> None:
         config['Config']['Version']=version
         config.write()
 
-        printf(f'用户文件更新完毕, 程序原版本: {version_config}, 现在版本: {version}','main',0)
+        printf(f'用户文件更新完毕, 程序原版本: {version_config}, 现在版本: {version}')
         input('按回车继续')
 
     threading.Thread(target = run).start()
@@ -349,14 +352,14 @@ def main() -> None:
         os.system("CLS")
         printlog('main')
 
-        inpu=inputf('','main')
+        inpu=inputf('')
         if inpu in inpu_dict:
             inpu_dict[inpu]()
         elif inpu.find('/')==0:
             try:
-                printf(str(eval(inpu[1:])),'main',2)
+                printf(str(eval(inpu[1:])), level = 2, func = 'main')
             except Exception as error:
-                printf('错误: %s'%(error),'main',2)
+                printf('错误: %s'%(error), level = 2, func = 'main')
 
 version              = [1,2,0]
 log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
