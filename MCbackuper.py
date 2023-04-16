@@ -370,7 +370,7 @@ def main() -> None:
             except Exception:
                 printf(f'错误:\n{traceback.format_exc()}', level = 2)
 
-version              = [1,2,1]
+version              = [1,2,2]
 log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config               = ConfigObj("config.ini", encoding='UTF8')
 Exit                 = False
