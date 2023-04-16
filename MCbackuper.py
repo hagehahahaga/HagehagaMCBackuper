@@ -7,9 +7,10 @@ from configobj import ConfigObj
 import os
 import threading
 import updater
+import traceback
 
 def printf(
-        inpu:  str,
+        inpu: str,
         **keys
         ) -> None:
     '''key: 0 - INF,1 - ERR,2 - DEB func'''
@@ -21,8 +22,7 @@ def printf(
         logs[func]=[]
     logs[func].append(inpu)
     print(inpu)
-    if bool(config['Config']['LogsToFile']):
-        log_write(inpu)
+    log_write(inpu)
 
 def inputf(
         inpu: str,
@@ -37,15 +37,15 @@ def inputf(
         inpu_formarted+='\n'
     inpu=input(inpu_formarted)
     logs[func].append(f'{time.strftime("%Y%m%d %H%M%S", time.localtime())} - {func} - [IPU] {inpu}')
-    if bool(config['Config']['LogsToFile']):
-        log_write(inpu_formarted+inpu)
+    log_write(inpu_formarted+inpu)
     return inpu
 
 def log_write(
         input:str
         ) -> None:
-    with open(file=log_file,mode='a') as file:
-        file.write(input+'\n')
+    if bool(config['Config']['LogsToFile']):
+        with open(file=log_file,mode='a') as file:
+            file.write(input+'\n')
 
 def printlog(
         func:str
@@ -53,6 +53,61 @@ def printlog(
     if func not in logs:
         return
     print('\n'.join(logs[func]))
+
+def exeExist(exename:str) -> bool:
+    '''检测程序运行'''
+    return exename in map(lambda x:x.name(),psutil.process_iter())
+
+def thread_lock():
+    '''一键上线程锁'''
+    if bool(config['Config']['AutoSave']) and not thread_autosave_lock.locked():
+        thread_autosave_lock.acquire()
+    thread_run_lock.acquire()
+
+def thread_unlock():
+    '''一键解线程锁'''
+    if bool(config['Config']['AutoSave']) and thread_autosave_lock.locked():
+        thread_autosave_lock.release()
+    thread_run_lock.release()
+
+def save(*tags) -> None:
+    '''保存存档'''
+    tags=' '.join(map(str,tags))
+    shutil.copytree(
+        config['Config']['OriginalPath'],
+        config['Config']['BackupPath'] +
+        os.sep +
+        time.strftime("%Y%m%d %H%M", time.localtime()) +
+        tags
+    )
+    printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}",func = 'main')
+
+def run() -> None:
+    '''检测运行'''
+    running1 = False
+    while not Exit:
+        thread_run_lock.acquire()
+        running = exeExist("Minecraft.Windows.exe")
+        if running==running1:
+            thread_run_lock.release()
+            time.sleep(int(config['Config']['SleepTime']))
+            continue
+        if running:
+            printf("游戏运行中...", func = 'main')
+        else:
+            save()
+        running1 = running
+        thread_run_lock.release()
+
+def auto_save():
+    '''自动保存'''
+    while not Exit:
+        can_exit_sleep.wait(timeout = int(config['Config']['AutoSaveTime'])*3600)
+        if thread_autosave_lock.acquire(0) and\
+        exeExist("Minecraft.Windows.exe") and\
+        bool(config['Config']['AutoSave']):
+            save('AutoSave')
+        thread_autosave_lock.release()
 
 def config_setup() -> None:
     '''配置配置文件'''
@@ -81,12 +136,12 @@ def config_setup() -> None:
                 (
                     'OriginalPath',
                     '原始存档路径',
-                    'str'
+                    'str'#str
                 ),
                 (
                     'BackupPath',
                     '备份存档路径',
-                    'str'
+                    'str'#str
                 ),
                 (
                     'SleepTime',
@@ -96,12 +151,12 @@ def config_setup() -> None:
                 (
                     'LogsToFile',
                     '回车为否, 反之为是',
-                    'bool'
+                    'str'#bool
                 ),
                 (
                     'AutoSave',
                     '回车为否, 反之为是',
-                    'bool'
+                    'str'#bool
                 ),
                 (
                     'AutoSaveTime',
@@ -142,8 +197,8 @@ def config_setup() -> None:
         if inpu in inpu_dict:
             try:
                 config ['Config'] [inpu_dict [inpu] [0]] = eval(inpu_dict [inpu] [2]) (inputf(f"当前为 {config ['Config'] [inpu_dict [inpu] [0]]}, 输入{inpu_dict [inpu] [1]}"))
-            except Exception as exception:
-                printf(f'错误: {exception}',level=1)
+            except:
+                printf(f'错误:\n{traceback.format_exc()}',level=1)
         if inpu==str(inpu_dict_len):
             config=ConfigObj("config.ini", encoding='UTF8')
             break
@@ -154,39 +209,6 @@ def config_setup() -> None:
             break
     
     thread_unlock()
-
-def save(*tags) -> None:
-    '''保存存档'''
-    tags=' '.join(map(str,tags))
-    shutil.copytree(
-        config['Config']['OriginalPath'],
-        config['Config']['BackupPath'] +
-        os.sep +
-        time.strftime("%Y%m%d %H%M", time.localtime()) +
-        tags
-    )
-    printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}",func = 'main')
-
-def exeExist(exename:str) -> bool:
-    '''检测程序运行'''
-    return exename in map(lambda x:x.name(),psutil.process_iter())
-
-def run() -> None:
-    '''检测运行'''
-    running1 = False
-    while not Exit:
-        thread_run_lock.acquire()
-        running = exeExist("Minecraft.Windows.exe")
-        if running==running1:
-            thread_run_lock.release()
-            time.sleep(int(config['Config']['SleepTime']))
-            continue
-        if running:
-            printf("游戏运行中...", func = 'main')
-        else:
-            save()
-        running1 = running
-        thread_run_lock.release()
 
 def backups() -> None:
     '''管理备份们'''
@@ -272,34 +294,6 @@ def backups() -> None:
 
     thread_unlock()
 
-def auto_save():
-    '''自动保存'''
-    while not Exit:
-        can_exit_sleep(int(config['Config']['AutoSaveTime'])*3600)
-        if thread_autosave_lock.acquire(0) and exeExist("Minecraft.Windows.exe"):
-            save('AutoSave')
-        thread_autosave_lock.release()
-
-def thread_lock():
-    '''一键上线程锁'''
-    if bool(config['Config']['AutoSave']):
-        try:thread_autosave_lock.acquire()
-        except:...
-    thread_run_lock.acquire()
-
-def thread_unlock():
-    '''一键解线程锁'''
-    if bool(config['Config']['AutoSave']):
-        try:thread_autosave_lock.release()
-        except:...
-    thread_run_lock.release()
-
-def can_exit_sleep(sleep_time: int) -> None:
-    '''由Exit布尔值控制退出的sleep'''
-    while not Exit and sleep_time > 0:
-        time.sleep(1)
-        sleep_time-=1
-
 def main() -> None:
     '''主函数'''
     def logs_reset() -> None:
@@ -313,6 +307,7 @@ def main() -> None:
         '''退出程序'''
         global Exit
         printf('退出中......请稍等', func = 'main')
+        can_exit_sleep.set()
         Exit=True
 
     global logs
@@ -331,28 +326,23 @@ def main() -> None:
 
     version_config=list(map(int,config['Config'].get('Version',[])))
     if version != version_config:
-        list(
-            map(
-                lambda x: eval(f'updater.v{"_".join(map(str,x))}')(),
-                filter(
-                    lambda version: version_config < version,
-                    sorted(
+        for function_iterable in filter(
+            lambda version: version_config < version,
+            sorted(
+                map(
+                    lambda x: list(
                         map(
-                            lambda x: list(
-                                map(
-                                    int,
-                                    x[1:].split('_')
-                                )
-                            ),
-                            filter(
-                                lambda x: x.startswith('v'),
-                                dir(updater)
-                            )
+                            int,
+                            x[1:].split('_')
                         )
+                    ),
+                    filter(
+                        lambda x: x.startswith('v'),
+                        dir(updater)
                     )
                 )
-            )
-        )
+            )):
+            eval(f'updater.v{"_".join(map(str,function_iterable))}')()
         config['Config']['Version']=version
         config.write()
 
@@ -376,14 +366,15 @@ def main() -> None:
             inpu_dict[inpu]()
         elif inpu.find('/')==0:
             try:
-                printf(str(eval(inpu[1:])), level = 2, func = 'main')
-            except Exception as error:
-                printf('错误: %s'%(error), level = 2, func = 'main')
+                printf(str(eval(inpu[1:])), level = 2)
+            except Exception:
+                printf(f'错误:\n{traceback.format_exc()}', level = 2)
 
 version              = [1,2,1]
 log_file             = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config               = ConfigObj("config.ini", encoding='UTF8')
 Exit                 = False
+can_exit_sleep       = threading.Event()
 thread_run_lock      = threading.Lock()
 thread_autosave_lock = threading.Lock()
 uisleeptime          = 0.5
