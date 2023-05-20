@@ -3,7 +3,7 @@ import os
 
 def v1_2_0():
     os.mkdir('logs')
-    list(#日志文件移入loga文件夹
+    list(#日志文件移入logs文件夹
         map(
             lambda file:(
                 shutil.move(
