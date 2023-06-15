@@ -43,17 +43,13 @@ def inputf(
     return inpu
 
 
-def log_write(
-        inpu: str
-) -> None:
+def log_write(inpu: str) -> None:
     if bool(config['Config']['LogsToFile']):
         with open(file=log_file, mode='a') as file:
             file.write(inpu + '\n')
 
 
-def printlog(
-        func: str
-) -> None:
+def printlog(func: str) -> None:
     if func not in logs:
         return
     print('\n'.join(logs[func]))
@@ -147,12 +143,12 @@ def config_setup() -> None:
                 (
                     'OriginalPath',
                     '原始存档路径',
-                    'str'  # str
+                    'str'
                 ),
                 (
                     'BackupPath',
                     '备份存档路径',
-                    'str'  # str
+                    'str'
                 ),
                 (
                     'SleepTime',
@@ -388,7 +384,7 @@ def main() -> None:
         elif inpu.find('/') == 0:
             try:
                 printf(str(eval(inpu[1:])), level=2)
-            except Exception:
+            except:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
