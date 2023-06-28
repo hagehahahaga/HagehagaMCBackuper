@@ -368,7 +368,7 @@ def main() -> None:
         printf(f'用户文件更新完毕, 程序原版本: {version_config}, 现在版本: {version}')
         input('按回车继续')
 
-    if config['Config']['ChainStart']:
+    if config['Config']['ChainStart'] and not exe_exist(config['Config']['ChainStart'].split(os.sep)[-1]):
         printf(f'串联启动中, 路径: {config["Config"]["ChainStart"]}')
         os.startfile(config["Config"]["ChainStart"])
 
@@ -394,7 +394,7 @@ def main() -> None:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
-version = [1, 3, 0]
+version = [1, 3, 1]
 log_file = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config = ConfigObj("config.ini", encoding='UTF8')
 Exit = False
