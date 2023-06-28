@@ -108,7 +108,7 @@ def run() -> None:
 def auto_save():
     """自动保存"""
     while not Exit:
-        can_exit_sleep.wait(timeout=int(config['Config']['AutoSaveTime']) * 3600)
+        can_exit_sleep.wait(timeout=int(config['Config']['AutoSave']) * 3600)
         if thread_autosave_lock.acquire(False) and \
                 exe_exist("Minecraft.Windows.exe") and \
                 bool(config['Config']['AutoSave']):
@@ -127,8 +127,8 @@ def config_setup() -> None:
         config['Config']['OriginalPath'] = inputf("输入原始存档路径")
         config['Config']['BackupPath'] = inputf("输入备份存档路径")
         config['Config']['SleepTime'] = inputf("输入检测频率(s)")
-        config['Config']['AutoSaveTime'] = '1'
         config['Config']['Version'] = version
+        config['Config']['ChainStart'] = ''
         config.write()
         thread_unlock()
         return
@@ -162,13 +162,13 @@ def config_setup() -> None:
                 ),
                 (
                     'AutoSave',
-                    '回车为否, 反之为是',
-                    'str'  # bool
+                    '回车为否, 反之为自动备份间隔(h)',
+                    'str'  # bool, int
                 ),
                 (
-                    'AutoSaveTime',
-                    '自动备份间隔(h)',
-                    'int'
+                    'ChainStart',
+                    '回车为否, 反之为串联启动路径',
+                    'str'  # bool, str
                 )
             )
         )
@@ -190,8 +190,8 @@ def config_setup() -> None:
                         '更改备份存档路径',
                         '更改检测频率(s)',
                         '更改是否输出日志到本地',
-                        '更改是否开启自动备份',
-                        '更改自动备份间隔(h)',
+                        '更改自动备份配置',
+                        '更改串联启动配置',
                         '取消',
                         '确定'
                     )
@@ -337,34 +337,40 @@ def main() -> None:
         os.mkdir('.\\logs')
         config['Config'] = {}
         config['Config']['LogsToFile'] = 'True'
-        config['Config']['AutoSave'] = 'False'
+        config['Config']['AutoSave'] = ''
         printf('未创建配置文件', level=1, func='config_setup')
         config_setup()
 
     version_config = list(map(int, config['Config'].get('Version', [])))
     if version != version_config:
-        for function_iterable in filter(
-                lambda version_iter: version_config < version_iter,
-                sorted(
-                    map(
-                        lambda x: list(
-                            map(
-                                int,
-                                x[1:].split('_')
-                            )
-                        ),
-                        filter(
-                            lambda x: x.startswith('v'),
-                            dir(updater)
+        for function_iterated in filter(
+            lambda version_iter: version_config < version_iter,
+            sorted(
+                map(
+                    lambda x: list(
+                        map(
+                            int,
+                            x[1:].split('_')
                         )
+                    ),
+                    filter(
+                        lambda x: x.startswith('v'),
+                        dir(updater)
                     )
-                )):
-            eval(f'updater.v{"_".join(map(str, function_iterable))}')()
+                )
+            )
+        ):
+            eval(f'updater.v{"_".join(map(str, function_iterated))}')()
+        config.reload()
         config['Config']['Version'] = version
         config.write()
 
         printf(f'用户文件更新完毕, 程序原版本: {version_config}, 现在版本: {version}')
         input('按回车继续')
+
+    if config['Config']['ChainStart']:
+        printf(f'串联启动中, 路径: {config["Config"]["ChainStart"]}')
+        os.startfile(config["Config"]["ChainStart"])
 
     threading.Thread(target=run).start()
 
@@ -388,7 +394,7 @@ def main() -> None:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
-version = [1, 2, 2]
+version = [1, 3, 0]
 log_file = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config = ConfigObj("config.ini", encoding='UTF8')
 Exit = False
