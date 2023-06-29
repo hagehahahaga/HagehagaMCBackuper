@@ -77,13 +77,19 @@ def thread_unlock():
 def save(*tags) -> None:
     """保存存档"""
     tags = ' '.join(map(str, tags))
-    shutil.copytree(
-        config['Config']['OriginalPath'],
-        config['Config']['BackupPath'] +
-        os.sep +
-        time.strftime("%Y%m%d %H%M", time.localtime()) +
-        tags
-    )
+    utctime = time.strftime("%Y%m%d %H%M", time.localtime())
+    try:
+        shutil.copytree(
+            config['Config']['OriginalPath'],
+            config['Config']['BackupPath'] +
+            os.sep +
+            utctime +
+            ' ' +
+            tags
+        )
+    except shutil.Error:
+        time.sleep(1)
+        save(tags)
     printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}", func='main')
 
 
@@ -394,7 +400,7 @@ def main() -> None:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
-version = [1, 3, 1]
+version = [1, 3, 2]
 log_file = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config = ConfigObj("config.ini", encoding='UTF8')
 Exit = False
