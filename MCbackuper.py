@@ -74,22 +74,41 @@ def thread_unlock():
     thread_run_lock.release()
 
 
+def verify(func: str) -> bool:
+    """引导是否确认"""
+    inpu = inputf('确定要这么做吗？(Y/N)', func=func)
+    return {'Y': True, 'N': False}[inpu]
+
+
 def save(*tags) -> None:
     """保存存档"""
+    def threading_sleep(tags=''):
+        """1min后自动重新备份"""
+        can_exit_sleep.wait(timeout=60)
+        save(tags)
+
     tags = ' '.join(map(str, tags))
-    utctime = time.strftime("%Y%m%d %H%M", time.localtime())
+    target_dir = \
+        config['Config']['BackupPath'] + \
+        os.sep + \
+        time.strftime("%Y%m%d %H%M", time.localtime()) + \
+        ' ' + \
+        tags
+
     try:
         shutil.copytree(
             config['Config']['OriginalPath'],
-            config['Config']['BackupPath'] +
-            os.sep +
-            utctime +
-            ' ' +
-            tags
+            target_dir
         )
     except shutil.Error:
+        shutil.rmtree(target_dir)
         time.sleep(1)
         save(tags)
+        return
+    except FileExistsError:
+        printf('备份名重复, 将在1min后自动重新备份...', func='main')
+        threading.Thread(target=threading_sleep, args=(tags,)).start()
+        return
     printf(f"备份至{config['Config']['BackupPath']}, 标签: {tags}", func='main')
 
 
@@ -117,7 +136,8 @@ def auto_save():
         can_exit_sleep.wait(timeout=int(config['Config']['AutoSave']) * 3600)
         if thread_autosave_lock.acquire(False) and \
                 exe_exist("Minecraft.Windows.exe") and \
-                bool(config['Config']['AutoSave']):
+                bool(config['Config']['AutoSave']) and \
+                not Exit:
             save('AutoSave')
         thread_autosave_lock.release()
 
@@ -238,7 +258,7 @@ def backups() -> None:
                 f'备份{dirlist[inpu]} 含有 {len(worlds_backup)} 个存档, 原存档有 {len(worlds_original)} 个存档, 输入 0 删除, 1 回档, 2 '
                 f'展示差异, 3 返回',
                 func='backups')
-            if inpu_backup == '0':
+            if inpu_backup == '0' and verify('backups'):
                 shutil.rmtree(dir)
                 printf('删除成功', func='backups')
                 time.sleep(uisleeptime)
@@ -324,14 +344,14 @@ def main() -> None:
         """重置日志"""
         global logs
         logs = {'main': ['哈嗝哈哈哈嘎编程，能在网易基岩版我的世界关闭后自动备份存档至指定位置',
-                         '输入 0 进入设置, 1 立刻保存, 2 管理备份, 3 清除日志, 4 退出']}
+                         '输入 0 进入设置, 1 立刻备份, 2 管理备份, 3 清除日志, 4 退出']}
 
     def exit() -> None:
         """退出程序"""
         global Exit
         printf('退出中......请稍等', func='main')
-        can_exit_sleep.set()
         Exit = True
+        can_exit_sleep.set()
 
     global logs
     global Exit
@@ -350,21 +370,21 @@ def main() -> None:
     version_config = list(map(int, config['Config'].get('Version', [])))
     if version != version_config:
         for function_iterated in filter(
-            lambda version_iter: version_config < version_iter,
-            sorted(
-                map(
-                    lambda x: list(
-                        map(
-                            int,
-                            x[1:].split('_')
+                lambda version_iter: version_config < version_iter,
+                sorted(
+                    map(
+                        lambda x: list(
+                            map(
+                                int,
+                                x[1:].split('_')
+                            )
+                        ),
+                        filter(
+                            lambda x: x.startswith('v'),
+                            dir(updater)
                         )
-                    ),
-                    filter(
-                        lambda x: x.startswith('v'),
-                        dir(updater)
                     )
                 )
-            )
         ):
             eval(f'updater.v{"_".join(map(str, function_iterated))}')()
         config.reload()
@@ -391,7 +411,9 @@ def main() -> None:
         printlog('main')
 
         inpu = inputf('')
-        if inpu in inpu_dict:
+        if inpu == '1':
+            save('Active')
+        elif inpu in inpu_dict:
             inpu_dict[inpu]()
         elif inpu.find('/') == 0:
             try:
@@ -400,7 +422,7 @@ def main() -> None:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
-version = [1, 3, 2]
+version = [1, 3, 3]
 log_file = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config = ConfigObj("config.ini", encoding='UTF8')
 Exit = False
