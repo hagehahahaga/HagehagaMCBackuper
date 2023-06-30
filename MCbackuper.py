@@ -82,6 +82,7 @@ def verify(func: str) -> bool:
 
 def save(*tags) -> None:
     """保存存档"""
+
     def threading_sleep(tags=''):
         """1min后自动重新备份"""
         can_exit_sleep.wait(timeout=60)
@@ -101,7 +102,10 @@ def save(*tags) -> None:
             target_dir
         )
     except shutil.Error:
-        shutil.rmtree(target_dir)
+        try:
+            shutil.rmtree(target_dir)
+        except FileNotFoundError:
+            ...
         time.sleep(1)
         save(tags)
         return
@@ -422,7 +426,7 @@ def main() -> None:
                 printf(f'错误:\n{traceback.format_exc()}', level=2)
 
 
-version = [1, 3, 3]
+version = [1, 3, 4]
 log_file = f'.{os.sep}Logs{os.sep}log - {time.strftime("%Y%m%d %H%M%S", time.localtime())}.txt'
 config = ConfigObj("config.ini", encoding='UTF8')
 Exit = False
